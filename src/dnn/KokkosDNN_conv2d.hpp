@@ -70,14 +70,11 @@ namespace KokkosDNN {
 ///   default = 1 
 template<class AViewType,
          class FViewType,
-         class MViewType>
-void
-conv2d (const AViewType& A,
-        const FViewType& B,
-        const MViewType& C
-        typename AViewType::const_value_type& bias,
-        const int stride
-        )
+         class CViewType>
+void conv2d(const AViewType& A,
+            const FViewType& F,
+            const int stride,
+            const CViewType& C)          
 {
 
   #if (KOKKOSKERNELS_DEBUG_LEVEL > 0)
@@ -85,14 +82,14 @@ conv2d (const AViewType& A,
                  "AViewType must be a Kokkos::View.");
   static_assert (Kokkos::Impl::is_view<FViewType>::value,
                  "FViewType must be a Kokkos::View.");
-  static_assert (Kokkos::Impl::is_view<MViewType>::value,
-                 "MViewType must be a Kokkos::View.");
+  static_assert (Kokkos::Impl::is_view<CViewType>::value,
+                 "CViewType must be a Kokkos::View.");
   static_assert (static_cast<int> (AViewType::rank) == 2,
                  "AViewType must have rank 2.");
   static_assert (static_cast<int> (FViewType::rank) == 2,
                  "FViewType must have rank 2.");
-  static_assert (static_cast<int> (MViewType::rank) == 2,
-                 "MViewType must have rank 2.");
+  static_assert (static_cast<int> (CViewType::rank) == 2,
+                 "CViewType must have rank 2.");
 
   // Check validity of transpose argument
 /*
@@ -104,9 +101,10 @@ conv2d (const AViewType& A,
                       (transB[0] == 'C') || (transB[0] == 'c');
   if(!(valid_transA && valid_transB)) {
     std::ostringstream os;
-    os << "KokkosBlas::gemm: transA[0] = '" << transA[0] << " transB[0] = '" << transB[0] << "'. " <<
-      "Valid values include 'N' or 'n' (No transpose), 'T' or 't' (Transpose), "
-      "and 'C' or 'c' (Conjugate transpose).";
+    os << "KokkosBlas::gemm: transA[0] = '" << transA[0] 
+      << " transB[0] = '" << transB[0] << "'. " 
+      << "Valid values include 'N' or 'n' (No transpose), 'T' or 't' " 
+      "(Transpose), and 'C' or 'c' (Conjugate transpose).";
     Kokkos::Impl::throw_runtime_exception (os.str ());
   }
 
@@ -138,23 +136,26 @@ conv2d (const AViewType& A,
     return;
 */
 
-  // Minimize the number of Impl::GEMV instantiations, by
+  // Minimize the number of Impl::CONV2D instantiations, by
   // standardizing on particular View specializations for its template
   // parameters.
   typedef Kokkos::View<typename AViewType::const_value_type**,
     typename AViewType::array_layout,
     typename AViewType::device_type,
     Kokkos::MemoryTraits<Kokkos::Unmanaged> > AVT;
+
   typedef Kokkos::View<typename FViewType::const_value_type**,
     typename FViewType::array_layout,
     typename FViewType::device_type,
     Kokkos::MemoryTraits<Kokkos::Unmanaged> > FVT;
-  typedef Kokkos::View<typename MViewType::non_const_value_type**,
-    typename MViewType::array_layout,
-    typename MViewType::device_type,
-    Kokkos::MemoryTraits<Kokkos::Unmanaged> > MVT;
-  typedef Impl::CONV2D<AVT, BVT, CVT> impl_type;
-  impl_type::conv2d (A, F, M, bias, stride);
+
+  typedef Kokkos::View<typename CViewType::non_const_value_type**,
+    typename CViewType::array_layout,
+    typename CViewType::device_type,
+    Kokkos::MemoryTraits<Kokkos::Unmanaged> > CVT;
+
+  typedef Impl::CONV2D<AVT, FVT, CVT> impl_type;
+  impl_type::conv2d (A, F, stride, C);
 }
 
 } // namespace KokkosDNN
