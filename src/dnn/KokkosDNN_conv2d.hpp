@@ -53,21 +53,18 @@
 
 namespace KokkosDNN {
 
-/// \brief 2D direct convolution: M_ik = SUM_c=1^C A_ic * F_kc,
-/// where * is the correlation operator, i is image receptive 
-/// field, k is the filter, c is the channel #.
+/// \brief 2D direct convolution: C =  A * F,
+/// where * is the correlation operator. 
 ///
 /// \tparam AViewType Input image matrix, as a 2-D Kokkos::View
 /// \tparam FViewType Input filter matrix, as a 2-D Kokkos::View
-/// \tparam MViewType Output matrix, as a nonconst 2-D Kokkos::View
+/// \tparam CViewType Output matrix, as a nonconst 2-D Kokkos::View
 ///
 /// \param A [in] Input matrix, as a 2-D Kokkos::View
 /// \param F [in] Input matrix, as a 2-D Kokkos::View
-/// \param M [in/out] Output vector, as a nonconst 2-D Kokkos::View
-/// \param bias [in] Input bias matrix for affine shift, as a 2-D 
-///   Kokkos::View
 /// \param stride [in] Input integer, filter movement over image
 ///   default = 1 
+/// \param C [in/out] Output vector, as a nonconst 2-D Kokkos::View
 template<class AViewType,
          class FViewType,
          class CViewType>
@@ -91,60 +88,50 @@ void conv2d(const AViewType& A,
   static_assert (static_cast<int> (CViewType::rank) == 2,
                  "CViewType must have rank 2.");
 
-  // Check validity of transpose argument
-/*
-  bool valid_transA = (transA[0] == 'N') || (transA[0] == 'n') ||
-                      (transA[0] == 'T') || (transA[0] == 't') ||
-                      (transA[0] == 'C') || (transA[0] == 'c');
-  bool valid_transB = (transB[0] == 'N') || (transB[0] == 'n') ||
-                      (transB[0] == 'T') || (transB[0] == 't') ||
-                      (transB[0] == 'C') || (transB[0] == 'c');
-  if(!(valid_transA && valid_transB)) {
-    std::ostringstream os;
-    os << "KokkosBlas::gemm: transA[0] = '" << transA[0] 
-      << " transB[0] = '" << transB[0] << "'. " 
-      << "Valid values include 'N' or 'n' (No transpose), 'T' or 't' " 
-      "(Transpose), and 'C' or 'c' (Conjugate transpose).";
-    Kokkos::Impl::throw_runtime_exception (os.str ());
-  }
-
   // Check compatibility of dimensions at run time.
-  bool A_t = !(transA[0] == 'N' || transA[0] == 'n');
-  bool B_t = !(transB[0] == 'N' || transB[0] == 'n');
   int64_t A0 = A.extent(0);
   int64_t A1 = A.extent(1);
-  int64_t B0 = B.extent(0);
-  int64_t B1 = B.extent(1);
+  int64_t F0 = F.extent(0);
+  int64_t F1 = F.extent(1);
   int64_t C0 = C.extent(0);
   int64_t C1 = C.extent(1);
 
-  if ( ((A_t?A1:A0) != C0) ||
-       ((B_t?B0:B1) != C1) ||
-       ((A_t?A0:A1) != (B_t?B1:B0)) ) {
+  // Required dimensions of C, given A and F
+  int64_t M = (A0 - F0) / stride + 1;
+  int64_t N = (A1 - F1) / stride + 1; 
+
+  if ((F0 % 2 == 0) || (F1 % 2 == 0)) {
+    std::ostringstream os;
+      os << "KokkosDNN::conv2d: Dimensions of filter F must be odd: "
+         << " F: " << F.extent(0) << " x " << F.extent(1);
+      Kokkos::Impl::throw_runtime_exception(os.str());
+  }
+  else if (C0 != M || C1 != N) {
       std::ostringstream os;
-      os << "KokkosBlas::gemm: Dimensions of A, B, and C do not match: "
-         << "transA: " << transA[0] << " transB: " << transB[0]
+      os << "KokkosDNN::conv2d: Dimensions of A, F, and C do not match: "
          << " A: " << A.extent(0) << " x " << A.extent(1)
-         << " B: " << B.extent(0) << " x " << B.extent(1)
-         << " C: " << C.extent(0) << " x " << C.extent(1);
+         << " F: " << F.extent(0) << " x " << F.extent(1)
+         << " C: " << C.extent(0) << " x " << C.extent(1)
+         << " Required C: " << M << " x " << N;
       Kokkos::Impl::throw_runtime_exception (os.str ());
     }
   #endif // KOKKOSKERNELS_DEBUG_LEVEL > 0
 
   // Return if degenerated matrices are provided
-  if((A.extent(0) == 0) || (A.extent(1) == 0) || (C.extent(1) == 0))
+  if((A.extent(0) == 0) || (A.extent(1) == 0) || 
+     (F.extent(0) == 0) || (F.extent(1) == 0) ||
+     (C.extent(0) == 0) || (C.extent(1) == 0))
     return;
-*/
 
   // Minimize the number of Impl::CONV2D instantiations, by
   // standardizing on particular View specializations for its template
   // parameters.
-  typedef Kokkos::View<typename AViewType::const_value_type**,
+  typedef Kokkos::View<typename AViewType::non_const_value_type**,
     typename AViewType::array_layout,
     typename AViewType::device_type,
     Kokkos::MemoryTraits<Kokkos::Unmanaged> > AVT;
 
-  typedef Kokkos::View<typename FViewType::const_value_type**,
+  typedef Kokkos::View<typename FViewType::non_const_value_type**,
     typename FViewType::array_layout,
     typename FViewType::device_type,
     Kokkos::MemoryTraits<Kokkos::Unmanaged> > FVT;
@@ -155,7 +142,8 @@ void conv2d(const AViewType& A,
     Kokkos::MemoryTraits<Kokkos::Unmanaged> > CVT;
 
   typedef Impl::CONV2D<AVT, FVT, CVT> impl_type;
-  impl_type::conv2d (A, F, stride, C);
+  
+  impl_type::conv2d(A, F, stride, C);
 }
 
 } // namespace KokkosDNN

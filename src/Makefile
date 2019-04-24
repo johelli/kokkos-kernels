@@ -84,6 +84,8 @@ kokkoskernels-install: kokkoskernels-build-lib
 	cp $(COPY_FLAG) ${KOKKOSKERNELS_PATH}/src/sparse/impl/*.hpp $(KOKKOSKERNELS_INSTALL_PATH)/include
 	cp $(COPY_FLAG) ${KOKKOSKERNELS_PATH}/src/graph/*.hpp $(KOKKOSKERNELS_INSTALL_PATH)/include
 	cp $(COPY_FLAG) ${KOKKOSKERNELS_PATH}/src/graph/impl/*.hpp $(KOKKOSKERNELS_INSTALL_PATH)/include
+	cp $(COPY_FLAG) ${KOKKOSKERNELS_PATH}/src/dnn/*.hpp $(KOKKOSKERNELS_INSTALL_PATH)/include
+	cp $(COPY_FLAG) ${KOKKOSKERNELS_PATH}/src/dnn/impl/*.hpp $(KOKKOSKERNELS_INSTALL_PATH)/include
 	cp $(COPY_FLAG) ${KOKKOSKERNELS_PATH}/src/common/*.hpp $(KOKKOSKERNELS_INSTALL_PATH)/include
 	cp $(COPY_FLAG) -r ${KOKKOSKERNELS_PATH}/src/impl/generated_specializations_hpp $(KOKKOSKERNELS_INSTALL_PATH)/include
 	cp $(COPY_FLAG) ${KOKKOSKERNELS_PATH}/src/impl/tpls/*.hpp $(KOKKOSKERNELS_INSTALL_PATH)/include
