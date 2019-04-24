@@ -48,10 +48,9 @@ INC  = -I${GTEST_PATH} -I$(KOKKOSKERNELS_SRC_PATH)/unit_test/
 INC += -I$(KOKKOSKERNELS_SRC_PATH)/unit_test/blas
 INC += -I$(KOKKOSKERNELS_SRC_PATH)/unit_test/sparse
 INC += -I$(KOKKOSKERNELS_SRC_PATH)/unit_test/graph
+INC += -I$(KOKKOSKERNELS_SRC_PATH)/unit_test/dnn
 INC += -I$(KOKKOSKERNELS_SRC_PATH)/unit_test/../test_common
 INC += -I$(KOKKOSKERNELS_SRC_PATH)/unit_test/batched
-
-
 
 
 vpath %.cpp ${KOKKOSKERNELS_SRC_PATH}/unit_test
@@ -60,6 +59,7 @@ TEST_HEADERS =  $(wildcard $(KOKKOSKERNELS_SRC_PATH)/unit_test/*.hpp)
 TEST_HEADERS += $(wildcard $(KOKKOSKERNELS_SRC_PATH)/unit_test/blas/*.hpp)
 TEST_HEADERS += $(wildcard $(KOKKOSKERNELS_SRC_PATH)/unit_test/sparse/*.hpp)
 TEST_HEADERS += $(wildcard $(KOKKOSKERNELS_SRC_PATH)/unit_test/graph/*.hpp)
+TEST_HEADERS += $(wildcard $(KOKKOSKERNELS_SRC_PATH)/unit_test/dnn/*.hpp)
 TEST_HEADERS += $(wildcard $(KOKKOSKERNELS_SRC_PATH)/unit_test/../test_common/*.hpp)
 TEST_HEADERS += $(wildcard $(KOKKOSKERNELS_SRC_PATH)/unit_test/batched/*.hpp)
 
@@ -125,6 +125,7 @@ ifeq ($(KOKKOSKERNELS_INTERNAL_TEST_OPENMP), 1)
   OBJ_OPENMP += Test_OpenMP_Graph_graph_color.o
   OBJ_OPENMP += Test_OpenMP_Graph_graph_color_deterministic.o
   OBJ_OPENMP += Test_OpenMP_Graph_graph_color_d2.o
+#  OBJ_OPENMP += Test_OpenMP_DNN_conv2d.o
   OBJ_OPENMP += Test_OpenMP_Common_ArithTraits.o
   OBJ_OPENMP += Test_OpenMP_Common_set_bit_count.o
 #  OBJ_OPENMP += Test_OpenMP_Common_float128.o
@@ -236,6 +237,7 @@ ifeq ($(KOKKOSKERNELS_INTERNAL_TEST_CUDA), 1)
   OBJ_CUDA += Test_Cuda_Graph_graph_color.o
   OBJ_CUDA += Test_Cuda_Graph_graph_color_deterministic.o
   OBJ_CUDA += Test_Cuda_Graph_graph_color_d2.o
+#  OBJ_CUDA += Test_Cuda_DNN_conv2d.o
   OBJ_CUDA += Test_Cuda_Common_ArithTraits.o
   OBJ_CUDA += Test_Cuda_Common_set_bit_count.o
   # Real
@@ -340,6 +342,7 @@ ifeq ($(KOKKOSKERNELS_INTERNAL_TEST_SERIAL), 1)
   OBJ_SERIAL += Test_Serial_Graph_graph_color.o
   OBJ_SERIAL += Test_Serial_Graph_graph_color_deterministic.o
   OBJ_SERIAL += Test_Serial_Graph_graph_color_d2.o
+  OBJ_SERIAL += Test_Serial_DNN_conv2d.o
   OBJ_SERIAL += Test_Serial_Common_ArithTraits.o
   OBJ_SERIAL += Test_Serial_Common_set_bit_count.o
 #  OBJ_SERIAL += Test_Serial_Common_float128.o
@@ -451,6 +454,7 @@ ifeq ($(KOKKOSKERNELS_INTERNAL_TEST_THREADS), 1)
   OBJ_THREADS += Test_Threads_Graph_graph_color.o
   OBJ_THREADS += Test_Threads_Graph_graph_color_deterministic.o
   OBJ_THREADS += Test_Threads_Graph_graph_color_d2.o
+#  OBJ_THREADS += Test_Threads_DNN_conv2d.o
   OBJ_THREADS += Test_Threads_Common_ArithTraits.o
   OBJ_THREADS += Test_Threads_Common_set_bit_count.o
 #  OBJ_THREADS += Test_Threads_Common_float128.o
