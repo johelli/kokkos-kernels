@@ -124,8 +124,9 @@ namespace Test {
 
     Kokkos::fill_random(A, rand_pool, ScalarA(10));
     Kokkos::fill_random(F, rand_pool, ScalarF(1));
-    Kokkos::fill_random(C, rand_pool, ScalarC(10));
     
+    // ???
+    Kokkos::fill_random(C, rand_pool, ScalarC(10));
     Kokkos::deep_copy(C2, C);
 
     Kokkos::fence();
@@ -197,6 +198,8 @@ int test_conv2d(int stride) {
                          view_type_c_ll, Device>(1024, 1024, 5, 5, stride);
 #endif
 
+  
+  
 #if defined(KOKKOSKERNELS_INST_LAYOUTRIGHT) || (!defined(KOKKOSKERNELS_ETI_ONLY) && !defined(KOKKOSKERNELS_IMPL_CHECK_ETI_CALLS))
   typedef Kokkos::View<ScalarA**, Kokkos::LayoutRight, Device> view_type_a_lr;
   typedef Kokkos::View<ScalarF**, Kokkos::LayoutRight, Device> view_type_f_lr;
@@ -248,9 +251,9 @@ TEST_F( TestCategory, conv2d_float ) {
 
     // Vary convolution stride
     test_conv2d<float, float, float, TestExecSpace> (1);
-//    test_conv2d<float, float, float, TestExecSpace> (2);
-//    test_conv2d<float, float, float, TestExecSpace> (3);
-//    test_conv2d<float, float, float, TestExecSpace> (4);
+    test_conv2d<float, float, float, TestExecSpace> (2);
+    test_conv2d<float, float, float, TestExecSpace> (3);
+    test_conv2d<float, float, float, TestExecSpace> (4);
 
   Kokkos::Profiling::popRegion();
 }
@@ -261,16 +264,16 @@ TEST_F( TestCategory, conv2d_double ) {
   Kokkos::Profiling::pushRegion("KokkosDNN::Test::conv2d_double");
  
     // Vary convolution stride
-    test_conv2d<const double, const double, const double, TestExecSpace> (1);
-//    test_conv2d<double, double, double, TestExecSpace> (2);
-//    test_conv2d<double, double, double, TestExecSpace> (3);
-//    test_conv2d<double, double, double, TestExecSpace> (4);
+    test_conv2d<double, double, double, TestExecSpace> (1);
+    test_conv2d<double, double, double, TestExecSpace> (2);
+    test_conv2d<double, double, double, TestExecSpace> (3);
+    test_conv2d<double, double, double, TestExecSpace> (4);
   
   Kokkos::Profiling::popRegion();
 }
 #endif
 
-/*
+
 #if defined(KOKKOSKERNELS_INST_COMPLEX_DOUBLE) || (!defined(KOKKOSKERNELS_ETI_ONLY) && !defined(KOKKOSKERNELS_IMPL_CHECK_ETI_CALLS))
 TEST_F( TestCategory, conv2d_complex_double ) {
   Kokkos::Profiling::pushRegion("KokkosDNN::Test::conv2d_complex_double");
@@ -278,12 +281,12 @@ TEST_F( TestCategory, conv2d_complex_double ) {
     // Vary convolution stride
     test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
                 Kokkos::complex<double>, TestExecSpace> (1);
-//    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
-//                Kokkos::complex<double>, TestExecSpace> (2);
-//    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
-//                Kokkos::complex<double>, TestExecSpace> (3);
-//    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
-//                Kokkos::complex<double>, TestExecSpace> (4);
+    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
+                Kokkos::complex<double>, TestExecSpace> (2);
+    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
+                Kokkos::complex<double>, TestExecSpace> (3);
+    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
+                Kokkos::complex<double>, TestExecSpace> (4);
  
   Kokkos::Profiling::popRegion();
 }
@@ -296,25 +299,25 @@ TEST_F( TestCategory, conv2d_complex_float ) {
     // Vary convolution stride
     test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
                 Kokkos::complex<float>, TestExecSpace> (1);
-//    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
-//                Kokkos::complex<float>, TestExecSpace> (2);
-//    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
-//                Kokkos::complex<float>, TestExecSpace> (3);
-//    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
-//                Kokkos::complex<float>, TestExecSpace> (4);
+    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
+                Kokkos::complex<float>, TestExecSpace> (2);
+    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
+                Kokkos::complex<float>, TestExecSpace> (3);
+    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
+                Kokkos::complex<float>, TestExecSpace> (4);
 
   Kokkos::Profiling::popRegion();
 }
 #endif
-*/
 
-/*
+
+
 #if defined(KOKKOSKERNELS_INST_INT) || (!defined(KOKKOSKERNELS_ETI_ONLY) && !defined(KOKKOSKERNELS_IMPL_CHECK_ETI_CALLS))
 TEST_F( TestCategory, conv2d_int ) {
     test_conv2d<int,int,int,TestExecSpace> (1);
 }
 #endif
-
+/*
 #if !defined(KOKKOSKERNELS_ETI_ONLY) && !defined(KOKKOSKERNELS_IMPL_CHECK_ETI_CALLS)
 TEST_F( TestCategory, conv2d_double_int ) {
     test_conv2d<double,int,float,TestExecSpace> (1);
