@@ -67,15 +67,17 @@ struct impl_conv2d_choose_copy_layout<Kokkos::Cuda, LayoutA,
 #endif
 
 // DeepCopy matrix block into scratch
-template<class TeamHandle, class ViewTypeScratch, class ViewType, 
-         class Layout, int blockDim_i, int blockDim_j>
-struct impl_deep_copy_matrix_block;
+
+//template<class TeamHandle, class ViewTypeScratch, class ViewType, 
+//         class Layout, int blockDim_i, int blockDim_j>
+//struct impl_deep_copy_matrix_block;
 
 template<class TeamHandle, class ViewTypeScratch, class ViewType, 
          class Layout, int blockDim_i, int blockDim_j>
-struct impl_deep_copy_matrix_block<TeamHandle, ViewTypeScratch, ViewType, 
-                                   Layout, 
-                                   blockDim_i, blockDim_j> {
+struct impl_deep_copy_matrix_block {
+//struct impl_deep_copy_matrix_block<TeamHandle, ViewTypeScratch, ViewType, 
+//                                   Layout, 
+//                                   blockDim_i, blockDim_j> {
   typedef typename ViewType::non_const_value_type value_type;
   typedef Kokkos::Details::ArithTraits<value_type>     ATV;
 
@@ -155,7 +157,7 @@ struct impl_deep_copy_matrix_block<TeamHandle, ViewTypeScratch, ViewType,
   }
 };
 
-
+// Update matrix block with new values
 template<class TeamHandle, class ViewType, class ViewTypeScratch, 
          class Layout, int blockDim_i, int blockDim_j>
 struct impl_update_matrix_block {
@@ -301,7 +303,7 @@ void impl_team_conv2d_block(const TeamHandle& team, const ViewTypeC& C,
       int A_i_offset = stride * C_i;
       int A_j_offset = stride * C_j; 
 
-      for (int F_i = 0; F_i < blockF0; ++F_j) {
+      for (int F_i = 0; F_i < blockF0; ++F_i) {
         for (int F_j = 0; F_j < blockF1; ++F_j) {
           C_ij += 
             A(A_i_offset + F_i, A_j_offset + F_j) * F(F_i, F_j);
@@ -326,6 +328,8 @@ struct CONV2DImpl {
   typedef typename ViewTypeA::non_const_value_type ScalarA;
   typedef typename ViewTypeF::non_const_value_type ScalarF;
   typedef typename ViewTypeC::non_const_value_type ScalarC;
+  typedef typename Kokkos::TeamPolicy<ExecSpace>   PolicyType;
+  typedef typename PolicyType::member_type         MemberType;
 
   const int num_blocks_0;
   const int num_blocks_1;
@@ -351,10 +355,10 @@ struct CONV2DImpl {
 //    num_blocks_0((C.extent_int(0) + blockA0 - 1) / blockA0),
 //    num_blocks_1((C.extent_int(1) + blockF1 - 1) / blockF1) {
     num_blocks_0(C.extent_int(0)),
-    num_blocks_1(C.extent_int(1)) { 
+    num_blocks_1(C.extent_int(1)),
+    stride(stride_) { 
 
     scratch_level = 0;
-    stride = stride_;
   }
 
   void run(int team_size, int vector_length, int scr_level) {
@@ -397,32 +401,28 @@ struct CONV2DImpl {
     team.team_barrier();
 
     // Move along the inner dimension in blocks
-    const int length = TransposeA > 0 ? A.extent_int(0) : A.extent_int(1);
+    const int length = A.extent_int(1);
     for(int A_j = 0; A_j < length; A_j += blockA1) {
       // Load A block into scratch
-      impl_deep_copy_matrix_block<typename Kokkos::TeamPolicy<ExecSpace>::
-                                    member_type,
+      KokkosDNN::Impl::impl_deep_copy_matrix_block<MemberType,
                                   ViewTypeAScratch, 
                                   ViewTypeA,
                                   typename impl_conv2d_choose_copy_layout<
-                                        ExecSpace,
+                                      ExecSpace,
                                       typename ViewTypeA::array_layout,
-                                      typename ViewTypeAScratch::
-                                        array_layout>::type,
+                                      typename ViewTypeAScratch::array_layout>::type,
                                   blockA0, 
                                   blockA1>::copy(team, A_scr,
                                                  A, i_offset, A_j);
 
       // Load F block into scratch
-      impl_deep_copy_matrix_block<typename Kokkos::TeamPolicy<ExecSpace>::
-                                    member_type,
+      KokkosDNN::Impl::impl_deep_copy_matrix_block<MemberType,
                                   ViewTypeFScratch, 
                                   ViewTypeF,
                                   typename impl_conv2d_choose_copy_layout<
                                         ExecSpace,
                                       typename ViewTypeF::array_layout,
-                                      typename ViewTypeFScratch::
-                                        array_layout>::type,
+                                      typename ViewTypeFScratch::array_layout>::type,
                                   blockA1, 
                                   blockF1>::copy(team, F_scr,
                                                  F, A_j, j_offset);
@@ -439,8 +439,7 @@ struct CONV2DImpl {
       team.team_barrier();
     }
     // Write back the C block from scratch to main memory
-    impl_update_matrix_block<typename Kokkos::TeamPolicy<ExecSpace>::
-                                member_type,
+    KokkosDNN::Impl::impl_update_matrix_block<MemberType,
                              ViewTypeC, 
                              ViewTypeCScratch,
                              typename ViewTypeC::array_layout,

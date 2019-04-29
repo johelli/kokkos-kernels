@@ -126,12 +126,12 @@ void conv2d(const AViewType& A,
   // Minimize the number of Impl::CONV2D instantiations, by
   // standardizing on particular View specializations for its template
   // parameters.
-  typedef Kokkos::View<typename AViewType::non_const_value_type**,
+  typedef Kokkos::View<typename AViewType::const_value_type**,
     typename AViewType::array_layout,
     typename AViewType::device_type,
     Kokkos::MemoryTraits<Kokkos::Unmanaged> > AVT;
 
-  typedef Kokkos::View<typename FViewType::non_const_value_type**,
+  typedef Kokkos::View<typename FViewType::const_value_type**,
     typename FViewType::array_layout,
     typename FViewType::device_type,
     Kokkos::MemoryTraits<Kokkos::Unmanaged> > FVT;

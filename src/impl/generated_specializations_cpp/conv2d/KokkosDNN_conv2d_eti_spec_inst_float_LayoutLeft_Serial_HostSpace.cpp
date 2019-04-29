@@ -48,11 +48,11 @@
  && defined (KOKKOSKERNELS_INST_LAYOUTLEFT) \
  && defined (KOKKOSKERNELS_INST_EXECSPACE_SERIAL) \
  && defined (KOKKOSKERNELS_INST_MEMSPACE_HOSTSPACE)
-#include "KokkosBlas3_gemm_spec.hpp"
+#include "KokkosDNN_conv2d_spec.hpp"
 
-namespace KokkosBlas {
+namespace KokkosDNN {
 namespace Impl {
- KOKKOSBLAS3_GEMM_ETI_SPEC_INST(float, Kokkos::LayoutLeft, Kokkos::Serial, Kokkos::HostSpace)
+ KOKKOSDNN_CONV2D_ETI_SPEC_INST(float, Kokkos::LayoutLeft, Kokkos::Serial, Kokkos::HostSpace)
 } // Impl
-} // KokkosBlas
+} // KokkosDNN
 #endif
