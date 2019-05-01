@@ -320,7 +320,8 @@ void impl_team_conv2d_block(const TeamHandle& team, const ViewTypeC& C,
 }
 
 template<class ExecSpace, class ViewTypeA, class ViewTypeF, 
-         class ViewTypeC, int blockA0, int blockA1, int blockF1>
+         class ViewTypeC, int blockA0, int blockA1, 
+         int blockF0, int blockF1, int blockC0, int blockC1>
 struct CONV2DImpl {
   ViewTypeA A;
   ViewTypeF F;
@@ -335,15 +336,14 @@ struct CONV2DImpl {
   const int num_blocks_1;
   int scratch_level;
 
-//  ScalarC alpha, beta;
   const int stride;
   typedef Kokkos::View<ScalarA[blockA0][blockA1], Kokkos::LayoutLeft, 
                        typename ExecSpace::scratch_memory_space>
     ViewTypeAScratch;
-  typedef Kokkos::View<ScalarF[blockA1][blockF1], Kokkos::LayoutRight, 
+  typedef Kokkos::View<ScalarF[blockF0][blockF1], Kokkos::LayoutRight, 
                        typename ExecSpace::scratch_memory_space>
     ViewTypeFScratch;
-  typedef Kokkos::View<ScalarC[blockA0][blockF1], Kokkos::LayoutRight, 
+  typedef Kokkos::View<ScalarC[blockC0][blockC1], Kokkos::LayoutRight, 
                        typename ExecSpace::scratch_memory_space>
     ViewTypeCScratch;
 
@@ -384,16 +384,16 @@ struct CONV2DImpl {
     // This team is responsible for computing a single block of C
     const int league_rank = team.league_rank();
     const int num_blocks = num_blocks_1;
-    const int i_offset = (league_rank/num_blocks)*blockA0;
-    const int j_offset = (league_rank%num_blocks)*blockF1;
+    const int i_offset = (league_rank/num_blocks)*blockC0;
+    const int j_offset = (league_rank%num_blocks)*blockC1;
 
     ViewTypeAScratch A_scr(team.team_scratch(scratch_level));
     ViewTypeFScratch F_scr(team.team_scratch(scratch_level));
     ViewTypeCScratch C_scr(team.team_scratch(scratch_level));
 
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(team,blockA0), 
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team,blockC0), 
                         [&] (const int i) {
-      Kokkos::parallel_for(Kokkos::ThreadVectorRange(team,blockF1), 
+      Kokkos::parallel_for(Kokkos::ThreadVectorRange(team,blockC1), 
                           [&] (const int j) {
         C_scr(i,j) = 0;
       });
@@ -423,9 +423,9 @@ struct CONV2DImpl {
                                         ExecSpace,
                                       typename ViewTypeF::array_layout,
                                       typename ViewTypeFScratch::array_layout>::type,
-                                  blockA1, 
+                                  blockF0, 
                                   blockF1>::copy(team, F_scr,
-                                                 F, A_j, j_offset);
+                                                 F, 0, 0);
 
       // Wait for A and F block to be in scratch memory
       team.team_barrier();
@@ -443,8 +443,8 @@ struct CONV2DImpl {
                              ViewTypeC, 
                              ViewTypeCScratch,
                              typename ViewTypeC::array_layout,
-                             blockA0, 
-                             blockF1>::update(team, C, 
+                             blockC0, 
+                             blockC1>::update(team, C, 
                                               C_scr, i_offset, j_offset);
   }
 };

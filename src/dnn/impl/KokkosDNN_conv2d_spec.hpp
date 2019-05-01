@@ -131,8 +131,11 @@ struct CONV2D {
   typedef typename CViewType::non_const_value_type ScalarC;
 
   // Define Blocking sizes (this will be used for scratch spaces)
-  static constexpr int blockA0 = 24;
+  static constexpr int blockA0 = 24; 
+
+  static constexpr int blockF0 = 64;
   static constexpr int blockF1 = 64;
+    
   static constexpr int blockA1 = 
     (sizeof(ScalarA) * blockA0 * 16 + 
      sizeof(ScalarF) * 16 * blockF1 + 
@@ -145,12 +148,17 @@ struct CONV2D {
                 sizeof(ScalarC) * blockA0 * blockF1 < 24000) ? 
             4 : 16;
 
+
+  static constexpr int blockC0 = 24;
+  static constexpr int blockC1 = 24;
+  
   static constexpr int vector_length = blockF1 / 4;
 
   // Compute scratch space size
   typedef KokkosDNN::Impl::CONV2DImpl<typename CViewType::execution_space, 
                                        AViewType, FViewType, CViewType, 
-                                       blockA0, blockA1, blockF1> conv2d_dummy_type;
+                                       blockA0, blockA1, blockF0, blockF1,
+                                       blockC0, blockC1> conv2d_dummy_type;
   const int scratch_memory_size =
         conv2d_dummy_type::ViewTypeAScratch::required_allocation_size() +
         conv2d_dummy_type::ViewTypeFScratch::required_allocation_size() +
@@ -170,7 +178,8 @@ struct CONV2D {
 
   KokkosDNN::Impl::CONV2DImpl<typename CViewType::execution_space,
                               AViewType, FViewType, CViewType,
-                              blockA0, blockA1, blockF1> conv2d(A, F, stride, C);
+                              blockA0, blockA1, blockF0, blockF1,
+                              blockC0, blockC1> conv2d(A, F, stride, C);
   conv2d.run(team_size, vector_length, scratch_level);
 
   Kokkos::Profiling::popRegion();
