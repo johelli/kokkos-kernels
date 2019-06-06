@@ -73,6 +73,11 @@ void conv2d(const AViewType& A,
             const int stride,
             const CViewType& C)          
 {
+  // Return if degenerated matrices are provided
+  if((A.extent(0) == 0) || (A.extent(1) == 0) || 
+     (F.extent(0) == 0) || (F.extent(1) == 0) ||
+     (C.extent(0) == 0) || (C.extent(1) == 0))
+    return;
 
   #if (KOKKOSKERNELS_DEBUG_LEVEL > 0)
   static_assert (Kokkos::Impl::is_view<AViewType>::value,
@@ -116,12 +121,6 @@ void conv2d(const AViewType& A,
       Kokkos::Impl::throw_runtime_exception (os.str ());
     }
   #endif // KOKKOSKERNELS_DEBUG_LEVEL > 0
-
-  // Return if degenerated matrices are provided
-  if((A.extent(0) == 0) || (A.extent(1) == 0) || 
-     (F.extent(0) == 0) || (F.extent(1) == 0) ||
-     (C.extent(0) == 0) || (C.extent(1) == 0))
-    return;
 
   // Minimize the number of Impl::CONV2D instantiations, by
   // standardizing on particular View specializations for its template

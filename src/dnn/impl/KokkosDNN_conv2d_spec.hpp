@@ -130,12 +130,30 @@ struct CONV2D {
   typedef typename FViewType::non_const_value_type ScalarF;
   typedef typename CViewType::non_const_value_type ScalarC;
 
+  // Always use full Filter
+//  const int blockF0 = F.extent_int(0);
+//  const int blockF1 = F.extent_int(1);
+   
+//  static constexpr int num_strides = 4;
+//  int num_strides = 200 / (blockF0 * blockF1) < 1 ? 1 : 200 / (blockF0 * blockF1);
+  
   // Define Blocking sizes (this will be used for scratch spaces)
-  static constexpr int blockA0 = 24; 
+  // Creates A blocks that are strided perfectly given the filter and
+  // stride length
+//  const int blockA0 = blockF0 + num_strides * stride; 
+//  const int blockA1 = blockF1 + num_strides * stride;
 
-  static constexpr int blockF0 = 64;
-  static constexpr int blockF1 = 64;
-    
+  // Always use full Filter
+  static constexpr int blockA0 = 7;
+  static constexpr int blockA1 = 7;
+
+  static constexpr int blockF0 = 3;
+  static constexpr int blockF1 = 3;
+   
+  static constexpr int blockC0 = 5;
+  static constexpr int blockC1 = 5;
+
+/* 
   static constexpr int blockA1 = 
     (sizeof(ScalarA) * blockA0 * 16 + 
      sizeof(ScalarF) * 16 * blockF1 + 
@@ -147,12 +165,20 @@ struct CONV2D {
                 sizeof(ScalarF) * 4 * blockF1 + 
                 sizeof(ScalarC) * blockA0 * blockF1 < 24000) ? 
             4 : 16;
+*/
 
 
+/*
   static constexpr int blockC0 = 24;
   static constexpr int blockC1 = 24;
-  
-  static constexpr int vector_length = blockF1 / 4;
+*/
+
+  // C block size dependent on A, F block dims
+//  const int blockC0 = (blockA0 - blockF0) / stride + 1;
+//  const int blockC1 = (blockA1 - blockF1) / stride + 1;
+ 
+  //??? 
+  const int vector_length = blockF1 / 4;
 
   // Compute scratch space size
   typedef KokkosDNN::Impl::CONV2DImpl<typename CViewType::execution_space, 
@@ -169,11 +195,11 @@ struct CONV2D {
   int team_size = 1;
   #if defined(KOKKOS_ENABLE_CUDA)
   if(std::is_same<typename CViewType::execution_space, Kokkos::Cuda>::value)
-    team_size = blockA0;
+    team_size = blockC0;
   #endif
   #if defined(KOKKOS_ENABLE_ROCM)
   if(std::is_same<typename CViewType::execution_space, Kokkos::ROCm>::value)
-    team_size = blockA0;
+    team_size = blockC0;
   #endif
 
   KokkosDNN::Impl::CONV2DImpl<typename CViewType::execution_space,

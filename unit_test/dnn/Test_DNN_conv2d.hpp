@@ -1,6 +1,10 @@
 #include<gtest/gtest.h>
 #include<Kokkos_Core.hpp>
 
+#include<iostream>
+#include<sstream>
+#include "KokkosKernels_helpers.hpp"
+
 #include "Kokkos_Random.hpp"
 #include "KokkosDNN_conv2d.hpp"
 #include "KokkosKernels_TestUtils.hpp"
@@ -117,20 +121,129 @@ namespace Test {
     ViewTypeA A("A", H, W);
     ViewTypeF F("F", R, S);
     ViewTypeC C ("C", M, N);
-    ViewTypeC C2("C2", M, N); 
+    ViewTypeC C2("C2", M, N);
+    ViewTypeC C3("C3", M, N); 
 
     uint64_t seed = Kokkos::Impl::clock_tic();
     Kokkos::Random_XorShift64_Pool<execution_space> rand_pool(seed);
 
-    Kokkos::fill_random(A, rand_pool, ScalarA(10));
-    Kokkos::fill_random(F, rand_pool, ScalarF(1));
-    
-    // ???
+//    Kokkos::TeamPolicy<execution_space> team(M, Kokkos::AUTO, 16);
+
+//    Kokkos::fill_random(A, rand_pool, ScalarA(10));
+//    Kokkos::fill_random(F, rand_pool, ScalarF(1));
+   
+    for (int i = 0; i < H; ++i) {
+//    Kokkos::parallel_for("Filling A", 
+//                         Kokkos::TeamPolicy<execution_space>(H, 
+//                            Kokkos::AUTO, 16), 
+//                        [&] (const int i) {
+      for (int j = 0; j < W; ++j) {                     
+        A(i,j) = 1;
+      }
+    }
+
+//    });
+//    team.team_barrier();
+
+
+    for (int i = 0; i < R; ++i) {
+//    Kokkos::parallel_for("Filling F", 
+//                         Kokkos::TeamPolicy<execution_space>(R, 
+//                            Kokkos::AUTO, 16), 
+//                        [&] (const int i) {
+      for (int j = 0; j < S; ++j) {
+        F(i,j) = 1;
+      }
+    }
+
+//    });
+//    team.team_barrier();
+
+    // ??? Junk
     Kokkos::fill_random(C, rand_pool, ScalarC(10));
     Kokkos::deep_copy(C2, C);
 
+    // C3(i,j) = #elements in F, if all elements of filter and image are 1
+    for (int i = 0; i < M; ++i) {
+//    Kokkos::parallel_for("Filling C3", 
+//                         Kokkos::TeamPolicy<execution_space>(M, 
+//                            Kokkos::AUTO, 16), 
+//                        [&] (const int i) { 
+      for (int j = 0; j < N; ++j) { 
+        C3(i,j) = R * S;
+      }
+    }
+//    })
+//    team.team_barrier();
+
     Kokkos::fence();
- 
+
+    // OUTPUT
+
+    // A
+    std::cout << "\nImage A: \n";
+    for (int i = 0; i < H; ++i) {
+      std::cout << "\nRow: " << i << " ";
+      
+      for (int j = 0; j < W; ++j) {
+        std::cout << " " << A(i, j);
+
+      }
+      std::cout << std::endl;
+    }
+
+    // F
+    std::cout << "\nFilter F: \n";
+    for (int i = 0; i < R; ++i) {
+      std::cout << "\nRow: " << i << " ";
+      
+      for (int j = 0; j < S; ++j) {
+        std::cout << " " << F(i, j);
+
+      }
+      std::cout << std::endl;
+    }
+
+
+    // C
+    std::cout << "\nRandom C: \n";
+    for (int i = 0; i < M; ++i) {
+      std::cout << "\nRow: " << i << " ";
+      
+      for (int j = 0; j < N; ++j) {
+        std::cout << " " << C(i, j);
+
+      }
+      std::cout << std::endl;
+    }
+
+
+    // C2
+    std::cout << "\nRandom C2: \n";
+    for (int i = 0; i < M; ++i) {
+      std::cout << "\nRow: " << i << " ";
+      
+      for (int j = 0; j < N; ++j) {
+        std::cout << " " << C2(i, j);
+
+      }
+      std::cout << std::endl;
+    }
+
+    // C3
+    std::cout << "\nSolution C3: \n";
+    for (int i = 0; i < M; ++i) {
+      std::cout << "\nRow: " << i << " ";
+      
+      for (int j = 0; j < N; ++j) {
+        std::cout << " " << C3(i, j);
+
+      }
+      std::cout << std::endl;
+    }
+
+    // !OUTPUT
+
     struct VanillaCONV2D<ViewTypeA, ViewTypeF, 
                          ViewTypeC, execution_space> vconv2d;
 
@@ -150,20 +263,41 @@ namespace Test {
 
     Kokkos::fence();
 
+    // Difference between C (kokkos-kernels) and C3 (true)
     mag_type diff_C = 0;
-    struct DiffConv2d<ViewTypeC, execution_space> diffconv2d;
-    diffconv2d.M = M;
-    diffconv2d.N = N;
-    diffconv2d.C = C;
-    diffconv2d.C2 = C2;
+    struct DiffConv2d<ViewTypeC, execution_space> diffconv2d_C;
+    diffconv2d_C.M = M;
+    diffconv2d_C.N = N;
+    diffconv2d_C.C = C;
+    diffconv2d_C.C2 = C3;
 
-    Kokkos::parallel_reduce("KokkosDNN::Test::DiffConv2d", 
+
+    Kokkos::parallel_reduce("KokkosDNN::Test::DiffConv2d_C", 
                             Kokkos::TeamPolicy<execution_space>(M, 
                               Kokkos::AUTO, 16), 
-                            diffconv2d, diff_C);
+                            diffconv2d_C, diff_C);
+
+    // Difference between C2 (vanilla) and C3 (true)
+    mag_type diff_C2 = 0;
+    struct DiffConv2d<ViewTypeC, execution_space> diffconv2d_C2;
+    diffconv2d_C2.M = M;
+    diffconv2d_C2.N = N;
+    diffconv2d_C2.C = C2;
+    diffconv2d_C2.C2 = C3;
+
+
+
+    Kokkos::parallel_reduce("KokkosDNN::Test::DiffConv2d_C2", 
+                            Kokkos::TeamPolicy<execution_space>(M, 
+                              Kokkos::AUTO, 16), 
+                            diffconv2d_C2, diff_C2);
+
 
     if (M != 0 && N != 0 && H != 0 && W != 0) {
+       
       double diff_C_average = diff_C / (M * N);
+      double diff_C2_average = diff_C2 / (M * N);
+/*
       // Expected Result: Random Walk in the least significant bit (i.e. 
       // ~ sqrt(W)*eps 
       // eps scales with the total sum and has a factor in it for the 
@@ -173,6 +307,18 @@ namespace Test {
 
       printf("Result: %e %e\n", diff_C_average, diff_C_expected);
       EXPECT_TRUE(diff_C_average < 1.05 * diff_C_expected);
+*/
+
+//      std::ostringstream os;
+
+      std::cout << "\n(M,N): " << M << " " << N << " DIFF_C_AVERAGE: " << diff_C_average 
+        << " diff_C: " << diff_C << std::endl;
+
+      std::cout << "\n(M,N): " << M << " " << N << " DIFF_C2_AVERAGE: " << diff_C2_average 
+        << " diff_C2: " << diff_C2 << std::endl;
+
+
+      EXPECT_TRUE(diff_C_average < 1);
     }
   }
 }
@@ -186,16 +332,16 @@ int test_conv2d(int stride) {
   typedef Kokkos::View<ScalarC**, Kokkos::LayoutLeft, Device> view_type_c_ll;
   
   // Teams: N, Image: H x W, Filter: R x S, Stride) {
+//  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
+//                         view_type_c_ll, Device>(0,       0, 0, 0, stride);
   Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
-                         view_type_c_ll, Device>(0,       0, 0, 0, stride);
-  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
-                         view_type_c_ll, Device>(13,     15, 3, 3, stride);
-  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
-                         view_type_c_ll, Device>(179,    15, 5, 3, stride);
-  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
-                         view_type_c_ll, Device>(12,   3071, 3, 5, stride);
-  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
-                         view_type_c_ll, Device>(1024, 1024, 5, 5, stride);
+                         view_type_c_ll, Device>(16,     16, 3, 3, stride);
+//  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
+//                         view_type_c_ll, Device>(179,    15, 5, 3, stride);
+//  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
+//                         view_type_c_ll, Device>(12,   3071, 3, 5, stride);
+//  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
+//                         view_type_c_ll, Device>(1024, 1024, 5, 5, stride);
 #endif
 
   
@@ -206,16 +352,16 @@ int test_conv2d(int stride) {
   typedef Kokkos::View<ScalarC**, Kokkos::LayoutRight, Device> view_type_c_lr;
   
   // Teams: N, Image: H x W, Filter: R x S, Stride) {
+//  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
+//                         view_type_c_lr, Device>(0,       0, 0, 0, stride);
   Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
-                         view_type_c_lr, Device>(0,       0, 0, 0, stride);
-  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
-                         view_type_c_lr, Device>(13,     15, 3, 3, stride);
-  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
-                         view_type_c_lr, Device>(179,    15, 5, 3, stride);
-  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
-                         view_type_c_lr, Device>(12,   3071, 3, 5, stride);
-  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
-                         view_type_c_lr, Device>(1024, 1024, 5, 5, stride);
+                         view_type_c_lr, Device>(16,     16, 3, 3, stride);
+//  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
+//                         view_type_c_lr, Device>(179,    15, 5, 3, stride);
+//  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
+//                         view_type_c_lr, Device>(12,   3071, 3, 5, stride);
+//  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
+//                         view_type_c_lr, Device>(1024, 1024, 5, 5, stride);
 #endif
 
 /*
@@ -251,9 +397,9 @@ TEST_F( TestCategory, conv2d_float ) {
 
     // Vary convolution stride
     test_conv2d<float, float, float, TestExecSpace> (1);
-    test_conv2d<float, float, float, TestExecSpace> (2);
-    test_conv2d<float, float, float, TestExecSpace> (3);
-    test_conv2d<float, float, float, TestExecSpace> (4);
+//    test_conv2d<float, float, float, TestExecSpace> (2);
+//    test_conv2d<float, float, float, TestExecSpace> (3);
+//    test_conv2d<float, float, float, TestExecSpace> (4);
 
   Kokkos::Profiling::popRegion();
 }
@@ -265,9 +411,9 @@ TEST_F( TestCategory, conv2d_double ) {
  
     // Vary convolution stride
     test_conv2d<double, double, double, TestExecSpace> (1);
-    test_conv2d<double, double, double, TestExecSpace> (2);
-    test_conv2d<double, double, double, TestExecSpace> (3);
-    test_conv2d<double, double, double, TestExecSpace> (4);
+//    test_conv2d<double, double, double, TestExecSpace> (2);
+//    test_conv2d<double, double, double, TestExecSpace> (3);
+//    test_conv2d<double, double, double, TestExecSpace> (4);
   
   Kokkos::Profiling::popRegion();
 }
@@ -281,12 +427,12 @@ TEST_F( TestCategory, conv2d_complex_double ) {
     // Vary convolution stride
     test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
                 Kokkos::complex<double>, TestExecSpace> (1);
-    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
-                Kokkos::complex<double>, TestExecSpace> (2);
-    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
-                Kokkos::complex<double>, TestExecSpace> (3);
-    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
-                Kokkos::complex<double>, TestExecSpace> (4);
+//    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
+//                Kokkos::complex<double>, TestExecSpace> (2);
+//    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
+//                Kokkos::complex<double>, TestExecSpace> (3);
+//    test_conv2d<Kokkos::complex<double>, Kokkos::complex<double>, 
+//                Kokkos::complex<double>, TestExecSpace> (4);
  
   Kokkos::Profiling::popRegion();
 }
@@ -299,12 +445,12 @@ TEST_F( TestCategory, conv2d_complex_float ) {
     // Vary convolution stride
     test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
                 Kokkos::complex<float>, TestExecSpace> (1);
-    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
-                Kokkos::complex<float>, TestExecSpace> (2);
-    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
-                Kokkos::complex<float>, TestExecSpace> (3);
-    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
-                Kokkos::complex<float>, TestExecSpace> (4);
+//    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
+//                Kokkos::complex<float>, TestExecSpace> (2);
+//    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
+//                Kokkos::complex<float>, TestExecSpace> (3);
+//    test_conv2d<Kokkos::complex<float>, Kokkos::complex<float>, 
+//                Kokkos::complex<float>, TestExecSpace> (4);
 
   Kokkos::Profiling::popRegion();
 }

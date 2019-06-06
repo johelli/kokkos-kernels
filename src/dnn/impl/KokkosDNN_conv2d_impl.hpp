@@ -189,12 +189,12 @@ struct impl_update_matrix_block {
       const int range_j = offset_j + blockDim_j <= A.extent_int(1) ? 
         blockDim_j : A.extent_int(1) % blockDim_j;
 
-      Kokkos::parallel_for(Kokkos::TeamThreadRange(team,range_j), 
+      Kokkos::parallel_for(Kokkos::TeamThreadRange(team, range_j), 
                           [&] (const int j) {
         const int idx_j = offset_j + j;
 
 
-        Kokkos::parallel_for(Kokkos::ThreadVectorRange(team,range_i), 
+        Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, range_i), 
                             [&] (const int i) {
           const int idx_i = offset_i + i;
           
@@ -296,7 +296,7 @@ void impl_team_conv2d_block(const TeamHandle& team, const ViewTypeC& C,
     #pragma omp simd
   #endif
 
-    for (int C_j = 0; C_j < blockC1; C_j++) {
+    for (int C_j = 0; C_j < blockC1; ++C_j) {
 #endif
       ScalarC C_ij = 0.0;
 
@@ -354,8 +354,8 @@ struct CONV2DImpl {
     C(C_),
 //    num_blocks_0((C.extent_int(0) + blockA0 - 1) / blockA0),
 //    num_blocks_1((C.extent_int(1) + blockF1 - 1) / blockF1) {
-    num_blocks_0(C.extent_int(0)),
-    num_blocks_1(C.extent_int(1)),
+    num_blocks_0((C.extent_int(0) + blockC0 - 1) / blockC0),
+    num_blocks_1((C.extent_int(1) + blockC1 - 1) / blockC1),
     stride(stride_) { 
 
     scratch_level = 0;
@@ -369,6 +369,7 @@ struct CONV2DImpl {
       ViewTypeFScratch::required_allocation_size() +
       ViewTypeCScratch::required_allocation_size();
 
+    // Launch bounds???
     Kokkos::TeamPolicy<ExecSpace,Kokkos::LaunchBounds<384,2>> policy(
         num_blocks_0 * num_blocks_1, team_size, vector_length);
 
@@ -400,9 +401,26 @@ struct CONV2DImpl {
     });
     team.team_barrier();
 
+    // Load F block (the whole filter) into scratch
+    KokkosDNN::Impl::impl_deep_copy_matrix_block<MemberType,
+                                ViewTypeFScratch, 
+                                ViewTypeF,
+                                typename impl_conv2d_choose_copy_layout<
+                                      ExecSpace,
+                                    typename ViewTypeF::array_layout,
+                                    typename ViewTypeFScratch::array_layout>::type,
+                                blockF0, 
+                                blockF1>::copy(team, F_scr, F, 0, 0);
+
+
     // Move along the inner dimension in blocks
-    const int length = A.extent_int(1);
-    for(int A_j = 0; A_j < length; A_j += blockA1) {
+    const int length = C.extent_int(1);  
+    for(int C_j = 0; C_j < length; C_j += blockC1) {
+
+      // offsets for A block deep copy
+      int A_i_offset = stride * blockC0 * i_offset;
+      int A_j_offset = stride * blockC1 * (C_j / blockC1); 
+
       // Load A block into scratch
       KokkosDNN::Impl::impl_deep_copy_matrix_block<MemberType,
                                   ViewTypeAScratch, 
@@ -412,10 +430,11 @@ struct CONV2DImpl {
                                       typename ViewTypeA::array_layout,
                                       typename ViewTypeAScratch::array_layout>::type,
                                   blockA0, 
-                                  blockA1>::copy(team, A_scr,
-                                                 A, i_offset, A_j);
+                                  blockA1>::copy(team, A_scr, A, 
+                                                 A_i_offset, A_j_offset);
 
-      // Load F block into scratch
+/*
+      // Load F block (the whole filter) into scratch
       KokkosDNN::Impl::impl_deep_copy_matrix_block<MemberType,
                                   ViewTypeFScratch, 
                                   ViewTypeF,
@@ -426,6 +445,7 @@ struct CONV2DImpl {
                                   blockF0, 
                                   blockF1>::copy(team, F_scr,
                                                  F, 0, 0);
+*/
 
       // Wait for A and F block to be in scratch memory
       team.team_barrier();
@@ -437,15 +457,17 @@ struct CONV2DImpl {
       // Wait for subblock computation to be done before loading the next 
       // A and F block
       team.team_barrier();
+
     }
+
     // Write back the C block from scratch to main memory
     KokkosDNN::Impl::impl_update_matrix_block<MemberType,
                              ViewTypeC, 
                              ViewTypeCScratch,
                              typename ViewTypeC::array_layout,
                              blockC0, 
-                             blockC1>::update(team, C, 
-                                              C_scr, i_offset, j_offset);
+                             blockC1>::update(team, C, C_scr, 
+                                              i_offset, j_offset);
   }
 };
 
