@@ -178,22 +178,22 @@ struct CONV2D {
 //  const int blockC1 = (blockA1 - blockF1) / stride + 1;
  
   //??? 
-  const int vector_length = blockF1 / 4;
+  const int vector_length = blockC1 / 4;
 
   // Compute scratch space size
-  typedef KokkosDNN::Impl::CONV2DImpl<typename CViewType::execution_space, 
-                                       AViewType, FViewType, CViewType, 
-                                       blockA0, blockA1, blockF0, blockF1,
-                                       blockC0, blockC1> conv2d_dummy_type;
-  const int scratch_memory_size =
-        conv2d_dummy_type::ViewTypeAScratch::required_allocation_size() +
-        conv2d_dummy_type::ViewTypeFScratch::required_allocation_size() +
-        conv2d_dummy_type::ViewTypeCScratch::required_allocation_size();
-  const int scratch_level = scratch_memory_size < 24000 ? 0 : 1;
+//  typedef KokkosDNN::Impl::CONV2DImpl<typename CViewType::execution_space, 
+//                                       AViewType, FViewType, CViewType, 
+  //                                     blockA0, blockA1, blockF0, blockF1,
+//                                       blockC0, blockC1> conv2d_dummy_type;
+  //const int scratch_memory_size =
+  //      conv2d_dummy_type::ViewTypeAScratch::required_allocation_size() +
+  //      conv2d_dummy_type::ViewTypeFScratch::required_allocation_size() +
+  //      conv2d_dummy_type::ViewTypeCScratch::required_allocation_size();
+  // const int scratch_level = scratch_memory_size < 24000 ? 0 : 1;
 
   // Figure out Team Sizes
   int team_size = 1;
-  #if defined(KOKKOS_ENABLE_CUDA)
+/*  #if defined(KOKKOS_ENABLE_CUDA)
   if(std::is_same<typename CViewType::execution_space, Kokkos::Cuda>::value)
     team_size = blockC0;
   #endif
@@ -201,12 +201,13 @@ struct CONV2D {
   if(std::is_same<typename CViewType::execution_space, Kokkos::ROCm>::value)
     team_size = blockC0;
   #endif
+*/
 
   KokkosDNN::Impl::CONV2DImpl<typename CViewType::execution_space,
                               AViewType, FViewType, CViewType,
-                              blockA0, blockA1, blockF0, blockF1,
+  //                            blockA0, blockA1, blockF0, blockF1,
                               blockC0, blockC1> conv2d(A, F, stride, C);
-  conv2d.run(team_size, vector_length, scratch_level);
+  conv2d.run(team_size, vector_length);  //, scratch_level);
 
   Kokkos::Profiling::popRegion();
 }
