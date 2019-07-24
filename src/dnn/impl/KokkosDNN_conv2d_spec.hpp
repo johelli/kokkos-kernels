@@ -126,9 +126,9 @@ struct CONV2D {
 
   Kokkos::Profiling::pushRegion(eti_spec_avail?"KokkosDNN::conv2d[ETI]":"KokkosDNN::conv2d[noETI]");
   // Figure out Scalar Types
-  typedef typename AViewType::non_const_value_type ScalarA;
-  typedef typename FViewType::non_const_value_type ScalarF;
-  typedef typename CViewType::non_const_value_type ScalarC;
+//  typedef typename AViewType::non_const_value_type ScalarA;
+//  typedef typename FViewType::non_const_value_type ScalarF;
+//  typedef typename CViewType::non_const_value_type ScalarC;
 
   // Always use full Filter
 //  const int blockF0 = F.extent_int(0);
@@ -144,14 +144,14 @@ struct CONV2D {
 //  const int blockA1 = blockF1 + num_strides * stride;
 
   // Always use full Filter
-  static constexpr int blockA0 = 7;
-  static constexpr int blockA1 = 7;
+//  static constexpr int blockA0 = 7;
+//  static constexpr int blockA1 = 7;
 
-  static constexpr int blockF0 = 3;
-  static constexpr int blockF1 = 3;
+//  static constexpr int blockF0 = 3;
+//  static constexpr int blockF1 = 3;
    
-  static constexpr int blockC0 = 5;
-  static constexpr int blockC1 = 5;
+  static constexpr int blockC0 = 16;
+  static constexpr int blockC1 = 16;
 
 /* 
   static constexpr int blockA1 = 

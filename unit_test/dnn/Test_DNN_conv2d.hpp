@@ -3,6 +3,7 @@
 
 #include<iostream>
 #include<sstream>
+#include<sys/time.h>
 #include "KokkosKernels_helpers.hpp"
 
 #include "Kokkos_Random.hpp"
@@ -87,7 +88,7 @@ namespace Test {
       mag_type diff_row = 0;
 
       Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, N), 
-                             [&] (const int& j,mag_type& diff_ij) {
+            KOKKOS_LAMBDA (const int& j, mag_type& diff_ij) {
 //        printf("A (%l %l) (%l %l) (%i %i)\n", 
 //               C.extent(0), C.extent(1), 
 //               C2.extent(0), C2.extent(1), i, j);
@@ -109,13 +110,13 @@ namespace Test {
   void impl_test_conv2d(int H, int W, int R, int S, int stride) {
 
     typedef typename ViewTypeA::device_type::execution_space execution_space;
-    typedef typename ViewTypeA::value_type ScalarA;
-    typedef typename ViewTypeF::value_type ScalarF;
+//    typedef typename ViewTypeA::value_type ScalarA;
+//    typedef typename ViewTypeF::value_type ScalarF;
     typedef typename ViewTypeC::value_type ScalarC;
     typedef Kokkos::Details::ArithTraits<ScalarC> APT;
     typedef typename APT::mag_type mag_type;
 
-    double machine_eps = APT::epsilon();
+//    double machine_eps = APT::epsilon();
 
     int M = (H - R) / stride + 1;
     int N = (W - S) / stride + 1;
@@ -134,29 +135,31 @@ namespace Test {
 //    Kokkos::fill_random(A, rand_pool, ScalarA(10));
 //    Kokkos::fill_random(F, rand_pool, ScalarF(1));
    
-    for (int i = 0; i < H; ++i) {
-//    Kokkos::parallel_for("Filling A", 
+//    for (int i = 0; i < H; ++i) {
+    Kokkos::parallel_for("Filling A", H,  
 //                         Kokkos::TeamPolicy<execution_space>(H, 
 //                            Kokkos::AUTO, 16), 
-//                        [&] (const int i) {
-      for (int j = 0; j < W; ++j) {                     
-        A(i,j) = i + j;
-      }
-    }
+        KOKKOS_LAMBDA (const int& i) {
+            for (int j = 0; j < W; ++j) {                     
+              A(i,j) = i + j;
+            }
+        });
+
+    std::cout << "\nSet the A" << std::endl;
 
 //    });
 //    team.team_barrier();
 
 
-    for (int i = 0; i < R; ++i) {
-//    Kokkos::parallel_for("Filling F", 
+//    for (int i = 0; i < R; ++i) {
+    Kokkos::parallel_for("Filling F", R,
 //                         Kokkos::TeamPolicy<execution_space>(R, 
 //                            Kokkos::AUTO, 16), 
-//                        [&] (const int i) {
-      for (int j = 0; j < S; ++j) {
-        F(i,j) = 1;
-      }
-    }
+        KOKKOS_LAMBDA (const int& i) {
+            for (int j = 0; j < S; ++j) {
+              F(i,j) = 1;
+            }
+        });
 
 //    });
 //    team.team_barrier();
@@ -166,15 +169,15 @@ namespace Test {
 //    Kokkos::deep_copy(C2, C);
 
     // C3(i,j) = #elements in F, if all elements of filter and image are 1
-    for (int i = 0; i < M; ++i) {
-//    Kokkos::parallel_for("Filling C3", 
+//    for (int i = 0; i < M; ++i) {
+    Kokkos::parallel_for("Filling C_Sol", M,
 //                         Kokkos::TeamPolicy<execution_space>(M, 
 //                            Kokkos::AUTO, 16), 
-//                        [&] (const int i) { 
-      for (int j = 0; j < N; ++j) { 
-        C_sol(i,j) = R * S * (i + (R / 2) + j + (S / 2));
-      }
-    }
+        KOKKOS_LAMBDA (const int& i) { 
+            for (int j = 0; j < N; ++j) { 
+              C_sol(i,j) = R * S * (i + (R / 2) + j + (S / 2));
+            }
+        });
 //    })
 //    team.team_barrier();
 
@@ -183,7 +186,7 @@ namespace Test {
     // OUTPUT
 
     // A
-    std::cout << "\nImage A: \n";
+/*    std::cout << "\nImage A: \n";
     for (int i = 0; i < H; ++i) {
       std::cout << "\nRow: " << i << " ";
       
@@ -218,7 +221,7 @@ namespace Test {
       }
       std::cout << std::endl;
     }
-
+*/
 
 /*    // C2
     std::cout << "\nRandom C2: \n";
@@ -234,7 +237,7 @@ namespace Test {
 */
 
     // C_sol
-    std::cout << "\nSolution C_sol: \n";
+/*    std::cout << "\nSolution C_sol: \n";
     for (int i = 0; i < M; ++i) {
       std::cout << "\nRow: " << i << " ";
       
@@ -244,6 +247,7 @@ namespace Test {
       }
       std::cout << std::endl;
     }
+*/
 
     // !OUTPUT
 /*
@@ -268,7 +272,7 @@ namespace Test {
     Kokkos::fence();
 
 
-
+/*
     std::cout << "\nSolution C: \n";
     for (int i = 0; i < M; ++i) {
       std::cout << "\nRow: " << i << " ";
@@ -279,6 +283,7 @@ namespace Test {
       }
       std::cout << std::endl;
     }
+*/
 /*
     std::cout << "\nSolution C2: \n";
     for (int i = 0; i < M; ++i) {
@@ -362,42 +367,110 @@ namespace Test {
 template<class ScalarA, class ScalarF, class ScalarC, class Device>
 int test_conv2d(int stride) {
 
+  struct timeval begin, end;
+
+
 #if defined(KOKKOSKERNELS_INST_LAYOUTLEFT) || (!defined(KOKKOSKERNELS_ETI_ONLY) && !defined(KOKKOSKERNELS_IMPL_CHECK_ETI_CALLS))
+/*
   typedef Kokkos::View<ScalarA**, Kokkos::LayoutLeft, Device> view_type_a_ll;
   typedef Kokkos::View<ScalarF**, Kokkos::LayoutLeft, Device> view_type_f_ll;
   typedef Kokkos::View<ScalarC**, Kokkos::LayoutLeft, Device> view_type_c_ll;
   
   // Teams: N, Image: H x W, Filter: R x S, Stride) {
-//  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
-//                         view_type_c_ll, Device>(0,       0, 0, 0, stride);
+  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
+                         view_type_c_ll, Device>(0,       0, 0, 0, stride);
   Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
                          view_type_c_ll, Device>(16,     16, 3, 3, stride);
-//  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
-//                         view_type_c_ll, Device>(179,    15, 5, 3, stride);
-//  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
-//                         view_type_c_ll, Device>(12,   3071, 3, 5, stride);
-//  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
-//                         view_type_c_ll, Device>(1024, 1024, 5, 5, stride);
+  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
+                         view_type_c_ll, Device>(179,    15, 5, 3, stride);
+  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
+                         view_type_c_ll, Device>(12,   3071, 3, 5, stride);
+  Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
+                         view_type_c_ll, Device>(1024, 1024, 5, 5, stride);
+*/
 #endif
 
   
   
 #if defined(KOKKOSKERNELS_INST_LAYOUTRIGHT) || (!defined(KOKKOSKERNELS_ETI_ONLY) && !defined(KOKKOSKERNELS_IMPL_CHECK_ETI_CALLS))
+
   typedef Kokkos::View<ScalarA**, Kokkos::LayoutRight, Device> view_type_a_lr;
   typedef Kokkos::View<ScalarF**, Kokkos::LayoutRight, Device> view_type_f_lr;
   typedef Kokkos::View<ScalarC**, Kokkos::LayoutRight, Device> view_type_c_lr;
-  
+/*  
   // Teams: N, Image: H x W, Filter: R x S, Stride) {
-//  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
-//                         view_type_c_lr, Device>(0,       0, 0, 0, stride);
+  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
+                         view_type_c_lr, Device>(0,       0, 0, 0, stride);
   Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
                          view_type_c_lr, Device>(16,     16, 3, 3, stride);
   Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
                          view_type_c_lr, Device>(179,    15, 5, 3, stride);
   Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
                          view_type_c_lr, Device>(12,   1071, 3, 5, stride);
+*/
+  
+//---------------------------------------------------------------------------//
+  
+  gettimeofday(&begin, NULL);
+
   Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
                          view_type_c_lr, Device>(1024, 1024, 5, 5, stride);
+
+  gettimeofday(&end, NULL);
+
+  double t1024 = 1.0 * (end.tv_sec - begin.tv_sec) + 
+      1.0e-6 * (end.tv_usec - begin.tv_usec);
+
+  std::cout << "\nTime A = (1024, 1024), F = (5,5), stride = " << stride << ": " << t1024 << std::endl;
+
+//---------------------------------------------------------------------------//
+
+  gettimeofday(&begin, NULL);
+  
+  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
+                         view_type_c_lr, Device>(4096, 4096, 5, 5, stride);
+
+  gettimeofday(&end, NULL);
+
+  double t4096 = 1.0 * (end.tv_sec - begin.tv_sec) + 
+      1.0e-6 * (end.tv_usec - begin.tv_usec);
+
+  std::cout << "\nTime A = (4096, 4096), F = (5,5), stride = " << stride << ": " << t4096 << std::endl;
+
+//---------------------------------------------------------------------------//
+
+  gettimeofday(&begin, NULL);
+
+  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
+                         view_type_c_lr, Device>(16384, 16384, 5, 5, stride);
+
+  gettimeofday(&end, NULL);
+
+  double t16384 = 1.0 * (end.tv_sec - begin.tv_sec) + 
+      1.0e-6 * (end.tv_usec - begin.tv_usec);
+
+  std::cout << "\nTime A = (16384, 16384), F = (5,5), stride = " << stride << ": " << t16384 << std::endl;
+
+//---------------------------------------------------------------------------//
+
+  gettimeofday(&begin, NULL);
+
+  Test::impl_test_conv2d<view_type_a_lr, view_type_f_lr, 
+                         view_type_c_lr, Device>(65536, 65536, 5, 5, stride);
+
+
+  gettimeofday(&end, NULL);
+
+  double t65536 = 1.0 * (end.tv_sec - begin.tv_sec) + 
+      1.0e-6 * (end.tv_usec - begin.tv_usec);
+
+  std::cout << "\nTime A = (65536, 65536), F = (5,5), stride = " << stride << ": " << t65536 << std::endl;
+
+//---------------------------------------------------------------------------//
+
+
+
+
 #endif
 
 /*

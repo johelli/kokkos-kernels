@@ -321,7 +321,7 @@ void impl_team_conv2d_block(const TeamHandle& team,
             A(A_i_offset + F_i, A_j_offset + F_j) * F(F_i, F_j);
 
 
-
+/*
           std::cout << "\n(i,j): " << C_i << " " << C_j << " C_ij: " << C_ij
             << " A_i_offset: " << A_i_offset << " A_j_offset: " << A_j_offset
             << " F_i: " << F_i << " F_j: " << F_j << " BlockF0: " << blockF0 
@@ -329,7 +329,7 @@ void impl_team_conv2d_block(const TeamHandle& team,
             << A(A_i_offset + F_i, A_j_offset + F_j) << " F(F_i, F_j): "
             << F(F_i, F_j) << " blockA0: " << blockA0 << " blockA1: "
             << blockA1 << " blockC0: " << blockC0 << " blockC1: " << blockC1 << std::endl;
-
+*/
 
         } 
       }
@@ -359,11 +359,10 @@ struct CONV2DImpl {
 
   const int num_blocks_0;
   const int num_blocks_1;
-  int blockA0, blockA1;
+  const int stride;
   int blockF0, blockF1;
   int scratch_level;
-
-  const int stride;
+  int blockA0, blockA1; 
 
 /*
   typedef Kokkos::View<ScalarA[blockA0][blockA1], Kokkos::LayoutLeft, 
@@ -538,6 +537,7 @@ struct CONV2DImpl {
     // Add contribution from convolving A with filter F and output C block
     impl_team_conv2d_block(team, C_scr, A_scr, F_scr, stride);
 
+/*
     for (int i = 0; i < blockC0; ++i) {
       for (int j = 0; j < blockC1; ++j) {
         std::cout << "\n(i,j): " << i << " " << j 
@@ -547,7 +547,7 @@ struct CONV2DImpl {
           << " C_j_offset: " << C_j_offset << std::endl;
       }
     }
-
+*/
 
     // Wait for subblock computation to be done before updating  
     team.team_barrier();
