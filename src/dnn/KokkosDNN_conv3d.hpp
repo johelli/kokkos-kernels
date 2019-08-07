@@ -137,7 +137,7 @@ void conv3d(const AViewType& A,
   typedef Kokkos::View<typename FViewType::const_value_type***,
     typename FViewType::array_layout,
     typename FViewType::device_type,
-    Kokkos::MemoryTraits<Kokkos::RandomAccess> > FVT;
+    Kokkos::MemoryTraits<Kokkos::Unmanaged> > FVT;
 
   typedef Kokkos::View<typename CViewType::non_const_value_type***,
     typename CViewType::array_layout,

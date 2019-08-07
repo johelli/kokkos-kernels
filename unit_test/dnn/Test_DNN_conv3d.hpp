@@ -87,7 +87,7 @@ namespace Test {
       mag_type diff_slice = 0;
 
       Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, N), 
-                             [&] (const int& j,mag_type& diff_ijk) {
+                             [&] (const int& j, mag_type& diff_ijk) {
 //        printf("A (%l %l) (%l %l) (%i %i)\n", 
 //               C.extent(0), C.extent(1), 
 //               C2.extent(0), C2.extent(1), i, j);
@@ -123,7 +123,7 @@ namespace Test {
 
     ViewTypeA A("A", H, W, D);
     ViewTypeF F("F", R, S, T);
-    ViewTypeC C ("C", M, N, O);
+    ViewTypeC C("C", M, N, O);
 
     ViewTypeC C_sol("C_sol", M, N, O); 
 
@@ -133,7 +133,7 @@ namespace Test {
     for (int i = 0; i < H; ++i) {
       for (int j = 0; j < W; ++j) {                     
         for (int k = 0; k < D; ++k) {
-          A(i,j,k) = i + j;
+          A(i,j,k) = i + j + k;
         }
       }
     }
@@ -217,6 +217,7 @@ namespace Test {
       std::cout << std::endl;
     }
 
+    Kokkos::fence();
 
 /*    // C2
     std::cout << "\nRandom C2: \n";
@@ -308,7 +309,7 @@ namespace Test {
     struct DiffConv3d<ViewTypeC, execution_space> diffconv3d_C;
     diffconv3d_C.M = M;
     diffconv3d_C.N = N;
-    diffconv3d_C.N = O;
+    diffconv3d_C.O = O;
     diffconv3d_C.C = C;
     diffconv3d_C.C2 = C_sol;
 
@@ -391,9 +392,9 @@ int test_conv3d(int stride) {
   
   
 #if defined(KOKKOSKERNELS_INST_LAYOUTRIGHT) || (!defined(KOKKOSKERNELS_ETI_ONLY) && !defined(KOKKOSKERNELS_IMPL_CHECK_ETI_CALLS))
-  typedef Kokkos::View<ScalarA**, Kokkos::LayoutRight, Device> view_type_a_lr;
-  typedef Kokkos::View<ScalarF**, Kokkos::LayoutRight, Device> view_type_f_lr;
-  typedef Kokkos::View<ScalarC**, Kokkos::LayoutRight, Device> view_type_c_lr;
+  typedef Kokkos::View<ScalarA***, Kokkos::LayoutRight, Device> view_type_a_lr;
+  typedef Kokkos::View<ScalarF***, Kokkos::LayoutRight, Device> view_type_f_lr;
+  typedef Kokkos::View<ScalarC***, Kokkos::LayoutRight, Device> view_type_c_lr;
   
   // Teams: N, Image: H x W, Filter: R x S, Stride) {
   Test::impl_test_conv3d<view_type_a_lr, view_type_f_lr, 
@@ -455,9 +456,9 @@ TEST_F( TestCategory, conv3d_double ) {
  
     // Vary convolution stride
     test_conv3d<double, double, double, TestExecSpace> (1);
-    test_conv3d<double, double, double, TestExecSpace> (2);
-    test_conv3d<double, double, double, TestExecSpace> (3);
-    test_conv3d<double, double, double, TestExecSpace> (4);
+//    test_conv3d<double, double, double, TestExecSpace> (2);
+//    test_conv3d<double, double, double, TestExecSpace> (3);
+//    test_conv3d<double, double, double, TestExecSpace> (4);
   
   Kokkos::Profiling::popRegion();
 }

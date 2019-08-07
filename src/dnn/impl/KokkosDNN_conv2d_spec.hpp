@@ -54,7 +54,7 @@
 namespace KokkosDNN {
 namespace Impl {
 // Specialization struct which defines whether a specialization exists
-template<class AVT, class FVT, class MVT>
+template<class AVT, class FVT, class CVT>
 struct conv2d_eti_spec_avail {
   enum : bool { value = false };
 };
@@ -144,11 +144,11 @@ struct CONV2D {
 //  const int blockA1 = blockF1 + num_strides * stride;
 
   // Always use full Filter
-  static constexpr int blockA0 = 7;
-  static constexpr int blockA1 = 7;
+//  static constexpr int blockA0 = 7;
+//  static constexpr int blockA1 = 7;
 
-  static constexpr int blockF0 = 3;
-  static constexpr int blockF1 = 3;
+//  static constexpr int blockF0 = 3;
+//  static constexpr int blockF1 = 3;
    
   static constexpr int blockC0 = 5;
   static constexpr int blockC1 = 5;
@@ -178,7 +178,8 @@ struct CONV2D {
 //  const int blockC1 = (blockA1 - blockF1) / stride + 1;
  
   //??? 
-  const int vector_length = blockC1 / 4;
+//  const int vector_length = blockC1 / 4;
+  const int vector_length = 8;
 
   // Compute scratch space size
 //  typedef KokkosDNN::Impl::CONV2DImpl<typename CViewType::execution_space, 

@@ -350,10 +350,6 @@ void impl_team_conv3d_block(const TeamHandle& team,
   const int blockC2 = C.extent_int(2);
 #endif
 
-//
-// Determine best order for looping
-//
-
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, blockC0), 
                       [&] (const int C_i) {
 #if defined(__CUDA_ARCH__) || !defined(KOKKOS_ENABLE_OPENMP)
@@ -373,6 +369,7 @@ void impl_team_conv3d_block(const TeamHandle& team,
       for (int C_k = 0; C_k < blockC2; ++C_k) {
         ScalarC C_ijk = 0.0;
 
+        // Offsets within A Block
         int A_i_offset = stride * C_i;
         int A_j_offset = stride * C_j; 
         int A_k_offset = stride * C_k; 
@@ -384,15 +381,28 @@ void impl_team_conv3d_block(const TeamHandle& team,
                 A(A_i_offset + F_i, A_j_offset + F_j, A_k_offset + F_k) * 
                 F(F_i, F_j, F_k);
 
-  /*
-            std::cout << "\n(i,j): " << C_i << " " << C_j << " C_ij: " << C_ij
-              << " A_i_offset: " << A_i_offset << " A_j_offset: " << A_j_offset
-              << " F_i: " << F_i << " F_j: " << F_j << " BlockF0: " << blockF0 
-              << " BlockF1: " << blockF1 << " A(of + F_i, of + F_j): " 
-              << A(A_i_offset + F_i, A_j_offset + F_j) << " F(F_i, F_j): "
-              << F(F_i, F_j) << " blockA0: " << blockA0 << " blockA1: "
-              << blockA1 << " blockC0: " << blockC0 << " blockC1: " << blockC1 << std::endl;
-  */
+/*
+            std::cout << "\n(i,j,k): " << C_i << " " << C_j << " " << C_k 
+              << " C_ijk: " << C_ijk
+              << " A_i_offset: " << A_i_offset 
+              << " A_j_offset: " << A_j_offset
+              << " A_k_offset: " << A_k_offset
+              << " F_i: " << F_i 
+              << " F_j: " << F_j 
+              << " F_k: " << F_k 
+              << " BlockF0: " << blockF0 
+              << " BlockF1: " << blockF1 
+              << " BlockF2: " << blockF2 
+              << " A(of + F_i, of + F_j, of + F_k): " 
+              << A(A_i_offset + F_i, A_j_offset + F_j, A_k_offset + F_k) 
+              << " F(F_i, F_j, F_k): " << F(F_i, F_j, F_k) 
+              << " blockA0: " << blockA0 
+              << " blockA1: " << blockA1 
+              << " blockA2: " << blockA2 
+              << " blockC0: " << blockC0 
+              << " blockC1: " << blockC1 
+              << " blockC2: " << blockC2 << std::endl;
+*/
             }
           } 
         }
@@ -475,9 +485,9 @@ struct CONV3DImpl {
       ViewTypeFScratch;
 
     size_t viewA_shared_size = 
-      ViewTypeAScratch::shmem_size(team_size, blockA0 * blockA1 * blockA2);
+      ViewTypeAScratch::shmem_size(team_size, blockA0, blockA1 * blockA2);
     size_t viewF_shared_size = 
-      ViewTypeFScratch::shmem_size(team_size, blockF0 * blockF1 * blockF2);
+      ViewTypeFScratch::shmem_size(team_size, blockF0, blockF1 * blockF2);
 
     int scratch_memory_size =
       viewA_shared_size + viewF_shared_size + 
@@ -507,9 +517,16 @@ struct CONV3DImpl {
     // This team is responsible for computing a single block of C
     const int league_rank = team.league_rank();
 //    const int num_blocks = num_blocks_1;
-    const int C_i_offset = (league_rank / num_blocks_1) * blockC0;
-    const int C_j_offset = (league_rank % num_blocks_1) * blockC1;
+    const int C_i_offset = (league_rank % num_blocks_0) * blockC0;
+    const int C_j_offset = (league_rank / num_blocks_0) % num_blocks_1 * blockC1;
     const int C_k_offset = (league_rank / (num_blocks_0 * num_blocks_1)) * blockC2;
+
+/*
+    std::cout << "\nTeam: " << league_rank 
+      << " C_i_of: " << C_i_offset
+      << " C_j_of: " << C_j_offset
+      << " C_k_of: " << C_k_offset << std::endl;
+*/
 
 //    ViewTypeAScratch A_scr(team.team_scratch(scratch_level));
 //    ViewTypeFScratch F_scr(team.team_scratch(scratch_level));
@@ -551,9 +568,16 @@ struct CONV3DImpl {
 //      int A_i_offset = stride * blockC0 * C_i_offset;
 //      int A_j_offset = stride * blockC1 * (C_j / blockC1); 
 
-    int A_i_offset = (league_rank / num_blocks_1) * blockC0 * stride; 
-    int A_j_offset = (league_rank % num_blocks_1) * blockC1 * stride;
+    int A_i_offset = (league_rank % num_blocks_0) * blockC0 * stride; 
+    int A_j_offset = (league_rank / num_blocks_0) % num_blocks_1 * blockC1 * stride;
     int A_k_offset = (league_rank / (num_blocks_0 * num_blocks_1)) * blockC2 * stride;
+
+/*    
+    std::cout << "\nTeam: " << league_rank 
+      << " A_i_of: " << A_i_offset
+      << " A_j_of: " << A_j_offset
+      << " A_k_of: " << A_k_offset << std::endl;
+  */
     
     // Load A block into scratch
     KokkosDNN::Impl::impl_deep_copy_matrix_block<MemberType,
@@ -616,7 +640,7 @@ struct CONV3DImpl {
 /*
     for (int i = 0; i < blockC0; ++i) {
       for (int j = 0; j < blockC1; ++j) {
-        std::cout << "\n(i,j): " << i << " " << j 
+        std::cout << "\n(i,j,k): " << i << " " << j 
           << " C_ij: " << C_scr(i, j) 
           << " league rank: " << league_rank 
           << " C_i_offset: " << C_i_offset 
