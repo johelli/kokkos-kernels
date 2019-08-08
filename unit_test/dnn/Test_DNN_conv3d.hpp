@@ -377,12 +377,12 @@ int test_conv3d(int stride) {
   typedef Kokkos::View<ScalarC***, Kokkos::LayoutLeft, Device> view_type_c_ll;
   
   // Teams: N, Image: H x W, Filter: R x S, Stride) {
-//  Test::impl_test_conv3d<view_type_a_ll, view_type_f_ll, 
-//                         view_type_c_ll, Device>(0,       0, 0, 0, stride);
+  Test::impl_test_conv3d<view_type_a_ll, view_type_f_ll, 
+                         view_type_c_ll, Device>(0,       0, 0, 0, 0, 0, stride);
   Test::impl_test_conv3d<view_type_a_ll, view_type_f_ll, 
                          view_type_c_ll, Device>(16,     16, 16,  3, 3, 3, stride);
-//  Test::impl_test_conv3d<view_type_a_ll, view_type_f_ll, 
-//                         view_type_c_ll, Device>(179,    15, 5, 3, stride);
+  Test::impl_test_conv3d<view_type_a_ll, view_type_f_ll, 
+                         view_type_c_ll, Device>(179,    16, 16, 5, 3, 3, stride);
 //  Test::impl_test_conv3d<view_type_a_ll, view_type_f_ll, 
 //                         view_type_c_ll, Device>(12,   3071, 3, 5, stride);
 //  Test::impl_test_conv3d<view_type_a_ll, view_type_f_ll, 
@@ -456,9 +456,9 @@ TEST_F( TestCategory, conv3d_double ) {
  
     // Vary convolution stride
     test_conv3d<double, double, double, TestExecSpace> (1);
-//    test_conv3d<double, double, double, TestExecSpace> (2);
-//    test_conv3d<double, double, double, TestExecSpace> (3);
-//    test_conv3d<double, double, double, TestExecSpace> (4);
+    test_conv3d<double, double, double, TestExecSpace> (2);
+    test_conv3d<double, double, double, TestExecSpace> (3);
+    test_conv3d<double, double, double, TestExecSpace> (4);
   
   Kokkos::Profiling::popRegion();
 }
