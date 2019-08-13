@@ -126,9 +126,9 @@ struct CONV3D {
 
   Kokkos::Profiling::pushRegion(eti_spec_avail?"KokkosDNN::conv3d[ETI]":"KokkosDNN::conv3d[noETI]");
   // Figure out Scalar Types
-  typedef typename AViewType::non_const_value_type ScalarA;
-  typedef typename FViewType::non_const_value_type ScalarF;
-  typedef typename CViewType::non_const_value_type ScalarC;
+//  typedef typename AViewType::non_const_value_type ScalarA;
+//  typedef typename FViewType::non_const_value_type ScalarF;
+//  typedef typename CViewType::non_const_value_type ScalarC;
 
   // Always use full Filter
 //  const int blockF0 = F.extent_int(0);

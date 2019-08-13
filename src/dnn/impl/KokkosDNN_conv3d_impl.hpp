@@ -328,9 +328,9 @@ void impl_team_conv3d_block(const TeamHandle& team,
 
 // GNU COMPILER BUG WORKAROUND
 #if defined(KOKKOS_COMPILER_GNU) || !defined(__CUDA_ARCH__)
-  int blockA0 = A.extent_int(0);
-  int blockA1 = A.extent_int(1);
-  int blockA2 = A.extent_int(2);
+//  int blockA0 = A.extent_int(0);
+//  int blockA1 = A.extent_int(1);
+//  int blockA2 = A.extent_int(2);
   int blockF0 = F.extent_int(0);
   int blockF1 = F.extent_int(1);
   int blockF2 = F.extent_int(2);
@@ -339,9 +339,9 @@ void impl_team_conv3d_block(const TeamHandle& team,
   int blockC2 = C.extent_int(2);
 
 #else
-  const int blockA0 = A.extent_int(0);
-  const int blockA1 = A.extent_int(1);
-  const int blockA2 = A.extent_int(2);
+//  const int blockA0 = A.extent_int(0);
+//  const int blockA1 = A.extent_int(1);
+//  const int blockA2 = A.extent_int(2);
   const int blockF0 = F.extent_int(0);
   const int blockF1 = F.extent_int(1);
   const int blockF2 = F.extent_int(2);
@@ -434,11 +434,10 @@ struct CONV3DImpl {
   const int num_blocks_0;
   const int num_blocks_1;
   const int num_blocks_2;
-  int blockA0, blockA1, blockA2;
+  const int stride; 
   int blockF0, blockF1, blockF2;
-  int scratch_level;
-
-  const int stride;
+  int blockA0, blockA1, blockA2;
+  int scratch_level; 
 
 /*
   typedef Kokkos::View<ScalarA[blockA0][blockA1], Kokkos::LayoutLeft, 
@@ -465,12 +464,11 @@ struct CONV3DImpl {
     blockF0(F_.extent_int(0)),
     blockF1(F_.extent_int(1)), 
     blockF2(F_.extent_int(2)) { 
-
-    scratch_level = 0;
+ 
     blockA0 = blockF0 + (blockC0 - 1) * stride;
     blockA1 = blockF1 + (blockC1 - 1) * stride;
     blockA2 = blockF2 + (blockC2 - 1) * stride;
-
+    scratch_level = 0;
   }
 
   void run(int team_size, int vector_length) { //, int scr_level) {
