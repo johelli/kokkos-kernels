@@ -320,7 +320,13 @@ template<class TeamHandle, class ViewTypeA, class ViewTypeF,
          class ViewTypeC>
 KOKKOS_INLINE_FUNCTION
 void impl_team_conv3d_block(const TeamHandle& team, 
-                            const ViewTypeC& C, 
+                            const ViewTypeC& C,
+                            const int C_i_offset,
+                            const int C_j_offset,
+                            const int C_k_offset,
+                            const int blockC0,
+                            const int blockC1,
+                            const int blockC2, 
                             const ViewTypeA& A, 
                             const ViewTypeF& F, 
                             const int stride) {
@@ -334,9 +340,9 @@ void impl_team_conv3d_block(const TeamHandle& team,
   int blockF0 = F.extent_int(0);
   int blockF1 = F.extent_int(1);
   int blockF2 = F.extent_int(2);
-  int blockC0 = C.extent_int(0);
-  int blockC1 = C.extent_int(1);
-  int blockC2 = C.extent_int(2);
+//  int blockC0 = C.extent_int(0);
+//  int blockC1 = C.extent_int(1);
+//  int blockC2 = C.extent_int(2);
 
 #else
 //  const int blockA0 = A.extent_int(0);
@@ -345,9 +351,9 @@ void impl_team_conv3d_block(const TeamHandle& team,
   const int blockF0 = F.extent_int(0);
   const int blockF1 = F.extent_int(1);
   const int blockF2 = F.extent_int(2);
-  const int blockC0 = C.extent_int(0);
-  const int blockC1 = C.extent_int(1);
-  const int blockC2 = C.extent_int(2);
+//  const int blockC0 = C.extent_int(0);
+//  const int blockC1 = C.extent_int(1);
+//  const int blockC2 = C.extent_int(2);
 #endif
 
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, blockC0), 
@@ -407,7 +413,9 @@ void impl_team_conv3d_block(const TeamHandle& team,
           } 
         }
 
-        C(C_i, C_j, C_k) += C_ijk;
+        C(C_i_offset + C_i, 
+          C_j_offset + C_j, 
+          C_k_offset + C_k) = C_ijk;
       }
 #if defined(__CUDA_ARCH__) || !defined(KOKKOS_ENABLE_OPENMP)
     });
@@ -495,7 +503,7 @@ struct CONV3DImpl {
 
     // Launch bounds???
     Kokkos::TeamPolicy<ExecSpace,Kokkos::LaunchBounds<384,2>> policy(
-        num_blocks_0 * num_blocks_1 * num_blocks_2, team_size, vector_length);
+        num_blocks_0 * num_blocks_1 * num_blocks_2, Kokkos::AUTO(), vector_length);
 
     Kokkos::parallel_for("KokkosDNN::conv3d", 
                          policy.set_scratch_size(scratch_level, 
@@ -535,15 +543,15 @@ struct CONV3DImpl {
     ViewTypeCScratch C_scr(team.team_scratch(scratch_level));
 
 
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(team,blockC0), 
-                        [&] (const int i) {
-      Kokkos::parallel_for(Kokkos::ThreadVectorRange(team,blockC1), 
-                          [&] (const int j) {
-        for (int k = 0; k < blockC2; ++k)
-          C_scr(i,j,k) = 0;
-      });
-    });
-    team.team_barrier();
+//    Kokkos::parallel_for(Kokkos::TeamThreadRange(team,blockC0), 
+//                        [&] (const int i) {
+//      Kokkos::parallel_for(Kokkos::ThreadVectorRange(team,blockC1), 
+//                          [&] (const int j) {
+//        for (int k = 0; k < blockC2; ++k)
+//          C_scr(i,j,k) = 0;
+//      });
+//    });
+//    team.team_barrier();
 
 /*
     // Load F block (the whole filter) into scratch
@@ -633,7 +641,15 @@ struct CONV3DImpl {
     team.team_barrier();
 
     // Add contribution from convolving A with filter F and output C block
-    impl_team_conv3d_block(team, C_scr, A_scr, F_scr, stride);
+    impl_team_conv3d_block(team, 
+                           C,
+                           C_i_offset,
+                           C_j_offset,
+                           C_k_offset,
+                           blockC0,
+                           blockC1,
+                           blockC2, 
+                           A_scr, F_scr, stride);
 
 /*
     for (int i = 0; i < blockC0; ++i) {
@@ -653,18 +669,18 @@ struct CONV3DImpl {
 //    }
 
     // Write back the C block from scratch to main memory
-    KokkosDNN::Impl::impl_update_matrix_block<MemberType,
-                             ViewTypeC, 
-                             ViewTypeCScratch,
-                             typename ViewTypeC::array_layout,
-                             blockC0, 
-                             blockC1,
-                             blockC2>::update(team, 
-                                              C, 
-                                              C_scr, 
-                                              C_i_offset, 
-                                              C_j_offset,
-                                              C_k_offset);
+//    KokkosDNN::Impl::impl_update_matrix_block<MemberType,
+//                             ViewTypeC, 
+//                             ViewTypeCScratch,
+//                             typename ViewTypeC::array_layout,
+//                             blockC0, 
+//                             blockC1,
+//                             blockC2>::update(team, 
+//                                              C, 
+//                                              C_scr, 
+//                                              C_i_offset, 
+//                                              C_j_offset,
+//                                              C_k_offset);
   }
 };
 

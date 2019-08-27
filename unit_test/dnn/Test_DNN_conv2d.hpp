@@ -174,6 +174,8 @@ namespace Test {
     }
 */
     // !OUTPUT
+    
+    std::cout << "\nAbout to conv" << std::endl;
 
     struct timeval begin, end;
 
@@ -310,8 +312,23 @@ int test_conv2d(int stride) {
   
     gettimeofday(&begin, NULL);
 
-    Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
-                           view_type_c_ll, Device>(65536, 65536, 5, 5, stride);
+//    Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
+//                           view_type_c_ll, Device>(20000, 20000, 5, 5, stride);
+
+    gettimeofday(&end, NULL);
+
+    double t20000_ll = 1.0 * (end.tv_sec - begin.tv_sec) + 
+        1.0e-6 * (end.tv_usec - begin.tv_usec);
+
+    std::cout << "\nTime A = (20000, 20000), F = (5,5), stride = " 
+        << stride << ": " << t20000_ll << std::endl;
+
+//---------------------------------------------------------------------------//
+  
+    gettimeofday(&begin, NULL);
+
+//    Test::impl_test_conv2d<view_type_a_ll, view_type_f_ll, 
+//                           view_type_c_ll, Device>(65536, 65536, 5, 5, stride);
 
     gettimeofday(&end, NULL);
 

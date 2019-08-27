@@ -150,9 +150,9 @@ struct CONV3D {
 //  static constexpr int blockF0 = 3;
 //  static constexpr int blockF1 = 3;
    
-  static constexpr int blockC0 = 5;
-  static constexpr int blockC1 = 5;
-  static constexpr int blockC2 = 5;
+  static constexpr int blockC0 = 32;
+  static constexpr int blockC1 = 32;
+  static constexpr int blockC2 = 32;
 
 /* 
   static constexpr int blockA1 = 

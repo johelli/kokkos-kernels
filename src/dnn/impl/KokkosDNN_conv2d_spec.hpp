@@ -150,8 +150,8 @@ struct CONV2D {
 //  static constexpr int blockF0 = 3;
 //  static constexpr int blockF1 = 3;
    
-  static constexpr int blockC0 = 5;
-  static constexpr int blockC1 = 5;
+  static constexpr int blockC0 = 32;
+  static constexpr int blockC1 = 32;
 
 /* 
   static constexpr int blockA1 = 
@@ -179,7 +179,7 @@ struct CONV2D {
  
   //??? 
 //  const int vector_length = blockC1 / 4;
-  const int vector_length = 8;
+  const int vector_length = 32;
 
   // Compute scratch space size
 //  typedef KokkosDNN::Impl::CONV2DImpl<typename CViewType::execution_space, 
