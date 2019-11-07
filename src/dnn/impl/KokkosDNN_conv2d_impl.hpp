@@ -334,7 +334,7 @@ void impl_team_conv2d_block(const TeamHandle& team,
         } 
       }
 
-      C(C_i, C_j) += C_ij;
+      C(C_i, C_j) = C_ij;
 #if defined(__CUDA_ARCH__) || !defined(KOKKOS_ENABLE_OPENMP)
     });
 #else
@@ -406,10 +406,10 @@ struct CONV2DImpl {
                        typename ExecSpace::scratch_memory_space>
       ViewTypeFScratch;
 
-    size_t viewA_shared_size = ViewTypeAScratch::shmem_size(team_size, blockA0 * blockA1);
-    size_t viewF_shared_size = ViewTypeFScratch::shmem_size(team_size, blockF0 * blockF1);
+    size_t viewA_shared_size = ViewTypeAScratch::shmem_size(blockA0, blockA1);
+    size_t viewF_shared_size = ViewTypeFScratch::shmem_size(blockF0, blockF1);
 
-    int scratch_memory_size =
+    size_t scratch_memory_size =
       viewA_shared_size + viewF_shared_size + 
       ViewTypeCScratch::required_allocation_size();
 
@@ -448,6 +448,9 @@ struct CONV2DImpl {
 
     ViewTypeCScratch C_scr(team.team_scratch(scratch_level));
 
+//    Kokkos::deep_copy(C_scr, 0);
+
+/*
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team,blockC0), 
                         [&] (const int i) {
       Kokkos::parallel_for(Kokkos::ThreadVectorRange(team,blockC1), 
@@ -456,7 +459,7 @@ struct CONV2DImpl {
       });
     });
     team.team_barrier();
-
+*/
 /*
     // Load F block (the whole filter) into scratch
     KokkosDNN::Impl::impl_deep_copy_matrix_block<MemberType,
